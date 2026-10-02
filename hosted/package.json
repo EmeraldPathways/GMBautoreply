@@ -1,0 +1,13 @@
+{
+  "name": "review-desk-hosted",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build-ui.mjs",
+    "test": "node --test",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

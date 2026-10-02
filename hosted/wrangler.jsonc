@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "review-desk-hosted",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-01",
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "review-desk",
+      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "PUBLIC_BASE_URL": "https://REPLACE_WITH_YOUR_WORKER_DOMAIN",
+    "OPENAI_MODEL": "gpt-4.1-mini"
+  }
+}

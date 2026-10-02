@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+data.sqlite
+*.sqlite
+local-secrets.json
+.dev.vars
+.wrangler/
+node_modules/
+hosted/node_modules/
+hosted/.wrangler/
+hosted/.dev.vars

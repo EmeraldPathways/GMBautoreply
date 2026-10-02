@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {environment} from './d1.mjs';
+import {one, loadSettings, ingest, purge, saveDraft, learn, state} from '../src/data.js';
+const location = 'accounts/1/locations/2', id = `${location}/reviews/3`;
+const stamp = new Date().toISOString();
+const review = (text = 'Friendly team and spotless car.', reply = '') => ({name: id, reviewId: '3', reviewer: {displayName: 'Sarah'}, starRating: 'FIVE', comment: text, createTime: stamp, updateTime: stamp, ...(reply && {reviewReply: {comment: reply, updateTime: stamp}})});
+test('Google updates keep drafts until review changes, and reconcile outside replies', async () => {
+  const env = environment();
+  await ingest(env, review(), location);
+  await saveDraft(env, id, 'Thank you Sarah.', 'approve');
+  await ingest(env, review(), location);
+  assert.equal((await one(env, 'SELECT status FROM reviews WHERE id=?', id)).status, 'approved');
+  const edited = {...review('Friendly team, but the door was damaged.'), updateTime: new Date(Date.now() + 1000).toISOString()};
+  await ingest(env, edited, location);
+  assert.equal((await one(env, 'SELECT status FROM reviews WHERE id=?', id)).status, 'draft');
+  assert.match((await one(env, 'SELECT flag FROM reviews WHERE id=?', id)).flag, /changed/);
+  await ingest(env, review('Friendly team', 'Posted elsewhere'), location);
+  assert.equal((await one(env, 'SELECT draft FROM reviews WHERE id=?', id)).draft, 'Posted elsewhere');
+});
+test('cache expires and learned owner reply excludes customer review text', async () => {
+  const env = environment();
+  await ingest(env, review(), location);
+  await saveDraft(env, id, 'Thank you for visiting.', 'approve');
+  await learn(env, id);
+  const example = await one(env, 'SELECT original,reply FROM examples LIMIT 1');
+  assert.equal(example.original, '');
+  assert.equal(example.reply, 'Thank you for visiting.');
+  await purge(env, Date.now() + 31 * 86400000);
+  assert.equal(await one(env, 'SELECT id FROM reviews WHERE id=?', id), null);
+  assert.ok(await one(env, 'SELECT id FROM examples LIMIT 1'));
+});
+test('settings and state have safe defaults and hide secrets', async () => {
+  const env = environment({OPENAI_API_KEY: 'api-key'});
+  assert.equal((await loadSettings(env)).auto_mode, 'off');
+  const s = await state(env);
+  assert.equal(s.ai, true);
+  assert.equal(s.google, false);
+  assert.ok(!JSON.stringify(s).includes('api-key'));
+});
